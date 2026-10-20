@@ -1,0 +1,6 @@
+{
+    "require": {
+        "phpmailer/phpmailer": "^7.1",
+        "thiagoalessio/tesseract_ocr": "^2.13"
+    }
+}

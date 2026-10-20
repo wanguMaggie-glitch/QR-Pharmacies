@@ -1,0 +1,34 @@
+# Composer dependencies
+
+/vendor/
+
+# Secret configuration files
+
+.env
+.env.*
+!.env.example
+
+# Database backups and exports
+
+*.sql
+*.sql.gz
+*.bak
+
+# Temporary and log files
+
+*.log
+*.tmp
+
+# Operating system files
+
+Thumbs.db
+.DS_Store
+
+# Editor settings
+
+.vscode/
+.idea/
+db_connect.php
+db_connect_backup.php
+mail_config.php
+check_password.php

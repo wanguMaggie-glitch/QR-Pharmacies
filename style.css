@@ -1,0 +1,369 @@
+css
+/* QR PHARMACIES - Shared Website Design */
+
+:root {
+    --green: #176b45;
+    --dark-green: #104d32;
+    --light-green: #e7f4ec;
+    --background: #f4f7f5;
+    --white: #ffffff;
+    --text: #24352c;
+    --muted: #718078;
+    --border: #e0e8e2;
+    --red: #dc3545;
+    --orange: #f0a500;
+    --shadow: 0 4px 20px rgba(25, 70, 45, 0.07);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text);
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+a {
+    color: var(--green);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--dark-green);
+}
+
+h1, h2, h3, h4 {
+    color: var(--text);
+    margin-top: 0;
+}
+
+h1 {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 22px;
+}
+
+/* Main layout */
+
+.container,
+.main-content {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+/* Header */
+
+.header,
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 30px;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+}
+
+.header h1,
+.topbar h1 {
+    margin: 0;
+    color: var(--green);
+}
+
+/* Navigation */
+
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px 30px;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+}
+
+nav a {
+    padding: 9px 13px;
+    border-radius: 7px;
+    font-weight: 600;
+}
+
+nav a:hover,
+nav a.active {
+    background: var(--light-green);
+    color: var(--dark-green);
+}
+
+/* Dashboard cards */
+
+.dashboard-cards,
+.stats-container,
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 22px;
+    margin: 25px 0;
+}
+
+.card,
+.stat-card {
+    padding: 25px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease;
+}
+
+.card:hover,
+.stat-card:hover {
+    transform: translateY(-3px);
+}
+
+.card h3,
+.stat-card h3 {
+    margin-bottom: 10px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.card .number,
+.stat-card .number,
+.stat-card .value {
+    margin: 0;
+    color: var(--green);
+    font-size: 32px;
+    font-weight: 700;
+}
+
+/* Content panels */
+
+.panel,
+.content-box,
+.form-container {
+    margin: 25px 0;
+    padding: 25px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+}
+
+/* Tables */
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+}
+
+thead {
+    background: var(--light-green);
+}
+
+th {
+    padding: 15px;
+    color: var(--dark-green);
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+td {
+    padding: 14px 15px;
+    border-bottom: 1px solid var(--border);
+}
+
+tbody tr:hover {
+    background: #f7fbf8;
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Buttons */
+
+button,
+.btn,
+input[type="submit"] {
+    display: inline-block;
+    padding: 10px 17px;
+    border: none;
+    border-radius: 7px;
+    background: var(--green);
+    color: var(--white);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+button:hover,
+.btn:hover,
+input[type="submit"]:hover {
+    background: var(--dark-green);
+    color: var(--white);
+}
+
+.btn-danger {
+    background: var(--red);
+}
+
+.btn-warning {
+    background: var(--orange);
+    color: #222;
+}
+
+.btn-secondary {
+    background: #68776e;
+}
+
+/* Forms */
+
+label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--text);
+    font-weight: 600;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+input[type="search"],
+select,
+textarea {
+    width: 100%;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border: 1px solid #cfdad2;
+    border-radius: 7px;
+    background: var(--white);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--green);
+    outline: 2px solid rgba(23, 107, 69, 0.12);
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Status badges */
+
+.status,
+.badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-available,
+.badge-success {
+    background: #e1f5e8;
+    color: #176b45;
+}
+
+.status-low,
+.badge-warning {
+    background: #fff1cc;
+    color: #8a5b00;
+}
+
+.status-expired,
+.badge-danger {
+    background: #fde5e7;
+    color: #b42332;
+}
+
+/* Alerts */
+
+.alert,
+.message {
+    margin: 15px 0;
+    padding: 13px 16px;
+    border-radius: 8px;
+}
+
+.alert-success,
+.message.success {
+    background: #e4f6e9;
+    color: #176b45;
+}
+
+.alert-error,
+.message.error {
+    background: #fde9e9;
+    color: #a51d2d;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    color: #795600;
+}
+
+/* Footer */
+
+footer {
+    padding: 20px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 13px;
+}
+
+/* Mobile layout */
+
+@media (max-width: 768px) {
+    .container,
+    .main-content {
+        padding: 18px;
+    }
+
+    .header,
+    .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px;
+    }
+
+    .dashboard-cards,
+    .stats-container,
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    nav {
+        padding: 12px 18px;
+    }
+}
+
