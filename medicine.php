@@ -1,3 +1,4 @@
+
 <?php
 session_start();
 
@@ -5,8 +6,13 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
+
+// Get the logged-in user's role
+$userRole = strtolower($_SESSION['role'] ?? '');
+
 require_once 'db_connect.php';
 
+// Retrieve all medicines and their categories
 $sql = "SELECT
             product.product_id,
             product.drug_name,
@@ -79,10 +85,27 @@ if (!$result) {
             padding: 12px 18px;
             text-decoration: none;
             border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
         }
 
         .button:hover {
             background: #056457;
+        }
+
+        .delete-button {
+            background: #dc2626;
+            color: white;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .delete-button:hover {
+            background: #b91c1c;
         }
 
         .table-container {
@@ -152,7 +175,7 @@ if (!$result) {
 <body>
 
 <header>
-    <h1>QR Chemists</h1>
+    <h1>QR PHARMACIES</h1>
     <p>Pharmacy Stock Management System</p>
 </header>
 
@@ -200,11 +223,11 @@ if (!$result) {
 
                     <tr>
                         <td>
-                            <?= htmlspecialchars($medicine['product_id']) ?>
+                            <?= htmlspecialchars((string)$medicine['product_id']) ?>
                         </td>
 
                         <td>
-                            <?= htmlspecialchars($medicine['drug_name']) ?>
+                            <?= htmlspecialchars($medicine['drug_name'] ?? '') ?>
                         </td>
 
                         <td>
@@ -216,7 +239,7 @@ if (!$result) {
                         </td>
 
                         <td>
-                            <?= htmlspecialchars($medicine['quantity']) ?>
+                            <?= htmlspecialchars((string)$medicine['quantity']) ?>
                         </td>
 
                         <td>
@@ -228,37 +251,35 @@ if (!$result) {
                         </td>
 
                         <td>
+                            <?php if ($isExpired): ?>
+                                <span class="expired">Expired</span>
+                            <?php elseif ($isLowStock): ?>
+                                <span class="low-stock">Low Stock</span>
+                            <?php else: ?>
+                                <span class="available">Available</span>
+                            <?php endif; ?>
+                        </td>
+
                         <td>
-    <?php if ($isExpired): ?>
-        <span class="expired">Expired</span>
-    <?php elseif ($isLowStock): ?>
-        <span class="low-stock">Low Stock</span>
-    <?php else: ?>
-        <span class="available">Available</span>
-    <?php endif; ?>
-</td>
+                            <a href="edit_medicine.php?id=<?= urlencode((string)$medicine['product_id']) ?>"
+                               class="button">Edit</a>
 
-<td>
-    <a href="edit_medicine.php?id=<?= urlencode($medicine['product_id']) ?>"
-       class="button">Edit</a>
+                            <?php if ($userRole === 'manager'): ?>
+                                <form action="delete_medicine.php"
+                                      method="POST"
+                                      style="display:inline;"
+                                      onsubmit="return confirm('Are you sure you want to delete this medicine record? This action cannot be undone.');">
 
-```
-<form action="delete_medicine.php" method="POST"
-      style="display:inline;"
-      onsubmit="return confirm('Are you sure you want to delete this medicine record? This action cannot be undone.');">
+                                    <input type="hidden"
+                                           name="id"
+                                           value="<?= htmlspecialchars((string)$medicine['product_id']) ?>">
 
-    <input type="hidden" name="id"
-           value="<?= htmlspecialchars($medicine['product_id']) ?>">
-
-    <button type="submit"
-            style="background:#dc2626;color:white;padding:12px 18px;border:none;border-radius:5px;cursor:pointer;">
-        Delete
-    </button>
-</form>
-```
-
-</td>
-
+                                    <button type="submit" class="delete-button">
+                                        Delete
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                        </td>
                     </tr>
 
                 <?php endwhile; ?>
@@ -279,8 +300,9 @@ if (!$result) {
 </main>
 
 <footer>
-    &copy; <?= date("Y") ?> Wanjiru Chemists Stock Management System
+    &copy; <?= date("Y") ?> QR PHARMACIES Stock Management System
 </footer>
 
 </body>
 </html>
+

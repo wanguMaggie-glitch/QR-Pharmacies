@@ -1,6 +1,8 @@
+
 <?php
 session_start();
 
+// Require login
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
@@ -8,9 +10,14 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once 'db_connect.php';
 
+// Identify the logged-in user's role
+$userRole = strtolower($_SESSION['role'] ?? '');
+$isManager = ($userRole === 'manager');
+
 // Count all medicines
 $medicineQuery = "SELECT COUNT(*) AS total FROM product";
 $medicineResult = $conn->query($medicineQuery);
+
 $totalMedicines = $medicineResult
     ? $medicineResult->fetch_assoc()['total']
     : 0;
@@ -18,6 +25,7 @@ $totalMedicines = $medicineResult
 // Count all categories
 $categoryQuery = "SELECT COUNT(*) AS total FROM category";
 $categoryResult = $conn->query($categoryQuery);
+
 $totalCategories = $categoryResult
     ? $categoryResult->fetch_assoc()['total']
     : 0;
@@ -28,7 +36,9 @@ $lowStockQuery = "
     FROM product
     WHERE quantity <= reorder_level
 ";
+
 $lowStockResult = $conn->query($lowStockQuery);
+
 $lowStock = $lowStockResult
     ? $lowStockResult->fetch_assoc()['total']
     : 0;
@@ -40,7 +50,9 @@ $expiredQuery = "
     WHERE expiry_date IS NOT NULL
     AND expiry_date < CURDATE()
 ";
+
 $expiredResult = $conn->query($expiredQuery);
+
 $expiredMedicines = $expiredResult
     ? $expiredResult->fetch_assoc()['total']
     : 0;
@@ -249,6 +261,17 @@ $expiredMedicines = $expiredResult
             color: white;
         }
 
+        /* Manager link */
+        .navigation .manager-link {
+            background-color: #e1f3e8;
+            border-color: #b5dfc5;
+        }
+
+        .navigation .manager-link:hover {
+            background-color: #176b45;
+            color: white;
+        }
+
         /* Stock reminder */
         .notice {
             padding: 20px;
@@ -345,22 +368,20 @@ $expiredMedicines = $expiredResult
 
     <!-- Dashboard heading and pharmacist picture -->
     <header class="header">
-    <div class="header-text">
-        <h1>QR PHARMACIES</h1>
-        <p>Pharmacy Stock Management System</p>
-    </div>
 
+        <div class="header-text">
+            <h1>QR PHARMACIES</h1>
+            <p>Pharmacy Stock Management System</p>
+        </div>
 
-<img
-    src="/pharmacy_stock/pharmacist.jpg"
-    alt="Pharmacist in a pharmacy"
-    class="header-image"
-    onerror="this.alt='Image could not load'; this.style.background='white';"
->
+        <img
+            src="pharmacist.jpg"
+            alt="Pharmacist in a pharmacy"
+            class="header-image"
+            onerror="this.style.display='none';"
+        >
 
-
-</header>
-
+    </header>
 
     <!-- Logged-in user details -->
     <div class="user-bar">
@@ -368,18 +389,14 @@ $expiredMedicines = $expiredResult
         <p>
             Welcome,
             <strong>
-                <?php
-                echo htmlspecialchars($_SESSION['full_name'] ?? 'User');
-                ?>!
+                <?= htmlspecialchars($_SESSION['full_name'] ?? 'User') ?>!
             </strong>
         </p>
 
         <p>
             Your role:
             <span class="role">
-                <?php
-                echo htmlspecialchars($_SESSION['role'] ?? 'User');
-                ?>
+                <?= htmlspecialchars($_SESSION['role'] ?? 'User') ?>
             </span>
         </p>
 
@@ -390,6 +407,7 @@ $expiredMedicines = $expiredResult
 
         <section class="welcome">
             <h2>Dashboard</h2>
+
             <p>
                 Welcome to QR PHARMACIES. Here is an overview
                 of your pharmacy stock.
@@ -402,34 +420,34 @@ $expiredMedicines = $expiredResult
             <div class="card">
                 <h3>Total Medicines</h3>
                 <p class="number">
-                    <?php echo (int) $totalMedicines; ?>
+                    <?= (int) $totalMedicines ?>
                 </p>
             </div>
 
             <div class="card">
                 <h3>Medicine Categories</h3>
                 <p class="number">
-                    <?php echo (int) $totalCategories; ?>
+                    <?= (int) $totalCategories ?>
                 </p>
             </div>
 
             <div class="card">
                 <h3>Low-Stock Medicines</h3>
                 <p class="number">
-                    <?php echo (int) $lowStock; ?>
+                    <?= (int) $lowStock ?>
                 </p>
             </div>
 
             <div class="card">
                 <h3>Expired Medicines</h3>
                 <p class="number">
-                    <?php echo (int) $expiredMedicines; ?>
+                    <?= (int) $expiredMedicines ?>
                 </p>
             </div>
 
         </section>
 
-        <!-- Navigation -->
+        <!-- Dashboard navigation -->
         <nav class="navigation">
 
             <a href="medicine.php">View Medicines</a>
@@ -440,19 +458,27 @@ $expiredMedicines = $expiredResult
 
             <a href="stock_transaction.php">Stock Transactions</a>
 
+            <a href="ocr.php">OCR - Scan Medicine</a>
+
+            <?php if ($isManager): ?>
+                <a href="users.php" class="manager-link">
+                    Manage Users
+                </a>
+            <?php endif; ?>
+
             <a href="logout.php">Log Out</a>
-<a href="ocr.php">OCR - Scan Medicine</a>
+
         </nav>
 
         <!-- Stock reminder -->
-        <div class="notice <?php echo $lowStock > 0 ? 'warning' : ''; ?>">
+        <div class="notice <?= $lowStock > 0 ? 'warning' : '' ?>">
 
             <strong>Stock Reminder:</strong>
 
             <?php
             if ($lowStock > 0) {
                 echo "You have " . (int) $lowStock .
-                     " medicine(s) that need restocking.";
+                    " medicine(s) that need restocking.";
             } else {
                 echo "No medicines currently require restocking.";
             }
@@ -464,9 +490,11 @@ $expiredMedicines = $expiredResult
 
     <!-- Footer -->
     <footer>
-        &copy; <?php echo date("Y"); ?>
+        &copy; <?= date("Y") ?>
         QR PHARMACIES Stock Management System
     </footer>
 
 </body>
 </html>
+
+

@@ -2,16 +2,31 @@
 session_start();
 require_once 'db_connect.php';
 
+// Require login
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
 
+// Identify the user's role
+$userRole = strtolower($_SESSION['role'] ?? '');
+$isManager = ($userRole === 'manager');
+
+// Messages
 $message = '';
 $error = '';
 
-// Add a new supplier
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_supplier'])) {
+// Only the manager can add or delete suppliers
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isManager) {
+    http_response_code(403);
+    die("Access denied. Only the manager can manage suppliers.");
+}
+
+// Add a new supplier - manager only
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['add_supplier'])
+    && $isManager) {
+
     $supplier_name = trim($_POST['supplier_name'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
     $address = trim($_POST['address'] ?? '');
@@ -22,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_supplier'])) {
         $check = $conn->prepare(
             "SELECT supplier_id FROM supplier WHERE supplier_name = ?"
         );
+
         $check->bind_param("s", $supplier_name);
         $check->execute();
         $result = $check->get_result();
@@ -33,9 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_supplier'])) {
                 "INSERT INTO supplier (supplier_name, phone, address)
                  VALUES (?, ?, ?)"
             );
+
             $stmt->bind_param("sss", $supplier_name, $phone, $address);
 
             if ($stmt->execute()) {
+                $stmt->close();
+                $check->close();
+
                 header("Location: suppliers.php?success=added");
                 exit();
             } else {
@@ -49,17 +69,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_supplier'])) {
     }
 }
 
-// Delete a supplier
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_supplier'])) {
+// Delete a supplier - manager only
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['delete_supplier'])
+    && $isManager) {
+
     $supplier_id = (int) ($_POST['supplier_id'] ?? 0);
 
     if ($supplier_id > 0) {
         $stmt = $conn->prepare(
             "DELETE FROM supplier WHERE supplier_id = ?"
         );
+
         $stmt->bind_param("i", $supplier_id);
 
         if ($stmt->execute() && $stmt->affected_rows > 0) {
+            $stmt->close();
+
             header("Location: suppliers.php?success=deleted");
             exit();
         } else {
@@ -98,6 +124,7 @@ if (!$suppliers) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Manage Suppliers | QR PHARMACIES</title>
 
     <style>
@@ -255,6 +282,14 @@ if (!$suppliers) {
             color: #687a73;
         }
 
+        .role-note {
+            background: #e6f4ef;
+            color: #087f5b;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
         @media (max-width: 700px) {
             body {
                 padding: 15px;
@@ -271,7 +306,9 @@ if (!$suppliers) {
 
 <div class="container">
 
-    <a class="back-link" href="index.php">&larr; Back to Dashboard</a>
+    <a class="back-link" href="index.php">
+        &larr; Back to Dashboard
+    </a>
 
     <div class="header">
         <h1>QR PHARMACIES</h1>
@@ -290,70 +327,94 @@ if (!$suppliers) {
         </div>
     <?php endif; ?>
 
+    <?php if (!$isManager): ?>
+        <div class="role-note">
+            You are logged in as a Clerk. You can view supplier
+            information but cannot add or delete suppliers.
+        </div>
+    <?php endif; ?>
+
+    <?php if ($isManager): ?>
+        <div class="card">
+            <h2>Add New Supplier</h2>
+
+            <form method="POST" action="suppliers.php">
+
+                <div class="form-grid">
+
+                    <div>
+                        <label for="supplier_name">Supplier Name</label>
+                        <input
+                            type="text"
+                            id="supplier_name"
+                            name="supplier_name"
+                            required
+                        >
+                    </div>
+
+                    <div>
+                        <label for="phone">Phone Number</label>
+                        <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            required
+                        >
+                    </div>
+
+                    <div>
+                        <label for="address">Address</label>
+                        <input
+                            type="text"
+                            id="address"
+                            name="address"
+                            required
+                        >
+                    </div>
+
+                </div>
+
+                <button
+                    class="add-button"
+                    type="submit"
+                    name="add_supplier"
+                >
+                    Add Supplier
+                </button>
+
+            </form>
+        </div>
+    <?php endif; ?>
+
     <div class="card">
-        <h2>Add New Supplier</h2>
 
-        <form method="POST" action="suppliers.php">
-            <div class="form-grid">
-
-                <div>
-                    <label for="supplier_name">Supplier Name</label>
-                    <input
-                        type="text"
-                        id="supplier_name"
-                        name="supplier_name"
-                        required
-                    >
-                </div>
-
-                <div>
-                    <label for="phone">Phone Number</label>
-                    <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        required
-                    >
-                </div>
-
-                <div>
-                    <label for="address">Address</label>
-                    <input
-                        type="text"
-                        id="address"
-                        name="address"
-                        required
-                    >
-                </div>
-
-            </div>
-
-            <button class="add-button" type="submit" name="add_supplier">
-                Add Supplier
-            </button>
-        </form>
-    </div>
-
-    <div class="card">
         <h2>Registered Suppliers</h2>
 
         <div class="table-wrapper">
+
             <table>
+
                 <thead>
                     <tr>
                         <th>ID</th>
                         <th>Supplier Name</th>
                         <th>Phone Number</th>
                         <th>Address</th>
-                        <th>Action</th>
+
+                        <?php if ($isManager): ?>
+                            <th>Action</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
 
                 <tbody>
+
                     <?php if ($suppliers->num_rows > 0): ?>
 
                         <?php while ($row = $suppliers->fetch_assoc()): ?>
+
                             <tr>
+
                                 <td>
                                     <?= (int) $row['supplier_id'] ?>
                                 </td>
@@ -370,39 +431,55 @@ if (!$suppliers) {
                                     <?= htmlspecialchars($row['address']) ?>
                                 </td>
 
-                                <td>
-                                    <form method="POST"
-                                          action="suppliers.php"
-                                          onsubmit="return confirm('Are you sure you want to delete this supplier?');">
+                                <?php if ($isManager): ?>
+                                    <td>
 
-                                        <input
-                                            type="hidden"
-                                            name="supplier_id"
-                                            value="<?= (int) $row['supplier_id'] ?>"
+                                        <form
+                                            method="POST"
+                                            action="suppliers.php"
+                                            onsubmit="return confirm('Are you sure you want to delete this supplier?');"
                                         >
 
-                                        <button
-                                            type="submit"
-                                            name="delete_supplier"
-                                            class="delete-button">
-                                            Delete
-                                        </button>
-                                    </form>
-                                </td>
+                                            <input
+                                                type="hidden"
+                                                name="supplier_id"
+                                                value="<?= (int) $row['supplier_id'] ?>"
+                                            >
+
+                                            <button
+                                                type="submit"
+                                                name="delete_supplier"
+                                                class="delete-button"
+                                            >
+                                                Delete
+                                            </button>
+
+                                        </form>
+
+                                    </td>
+                                <?php endif; ?>
+
                             </tr>
+
                         <?php endwhile; ?>
 
                     <?php else: ?>
 
                         <tr>
-                            <td colspan="5" class="empty">
+                            <td
+                                colspan="<?= $isManager ? 5 : 4 ?>"
+                                class="empty"
+                            >
                                 No suppliers have been registered yet.
                             </td>
                         </tr>
 
                     <?php endif; ?>
+
                 </tbody>
+
             </table>
+
         </div>
     </div>
 

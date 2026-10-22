@@ -1,10 +1,10 @@
+
 <?php
 session_start();
 require_once 'db_connect.php';
 require_once 'send_otp.php';
 
 $error = '';
-$success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -13,30 +13,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($username === '' || $recovery_email === '') {
         $error = 'Please enter your username and recovery email.';
+
     } elseif (!filter_var($recovery_email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
-    } elseif ($recovery_email !== 'wangum142@gmail.com') {
-        $error = 'The recovery email does not match.';
+
     } else {
 
+        // Find the user and their saved recovery email.
         $stmt = $conn->prepare(
-            "SELECT user_id, username
-             FROM user
+            "SELECT user_id, username, recovery_email
+             FROM `user`
              WHERE username = ?
              LIMIT 1"
         );
 
         if (!$stmt) {
             $error = 'A system error occurred. Please try again.';
+
         } else {
             $stmt->bind_param('s', $username);
             $stmt->execute();
+
             $result = $stmt->get_result();
             $user = $result->fetch_assoc();
+
             $stmt->close();
 
             if (!$user) {
-                $error = 'The username could not be verified.';
+                $error = 'The username or recovery email does not match.';
+
+            } elseif (
+                empty($user['recovery_email']) ||
+                strtolower(trim($user['recovery_email'])) !== $recovery_email
+            ) {
+                $error = 'The recovery email does not match.';
+
             } else {
 
                 // Invalidate previous unused OTPs for this account.
@@ -48,15 +59,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (!$stmt) {
                     $error = 'A system error occurred. Please try again.';
+
                 } else {
                     $stmt->bind_param('i', $user['user_id']);
                     $stmt->execute();
                     $stmt->close();
 
-                    // Generate a cryptographically secure 6-digit OTP.
+                    // Generate a secure six-digit verification code.
                     $otp = (string) random_int(100000, 999999);
                     $otp_hash = password_hash($otp, PASSWORD_DEFAULT);
-                    $expires_at = date('Y-m-d H:i:s', time() + 600);
+                    $expires_at = date(
+                        'Y-m-d H:i:s',
+                        time() + 600
+                    );
 
                     $stmt = $conn->prepare(
                         "INSERT INTO password_reset_otps
@@ -66,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     if (!$stmt) {
                         $error = 'A system error occurred. Please try again.';
+
                     } else {
                         $stmt->bind_param(
                             'iss',
@@ -77,19 +93,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (!$stmt->execute()) {
                             $error = 'Could not create the verification code.';
                             $stmt->close();
+
                         } else {
                             $otp_id = $conn->insert_id;
                             $stmt->close();
 
-                            if (sendOTPEmail($recovery_email, $otp)) {
+                            // Send the code to this user's saved email.
+                            if (sendOTPEmail($user['recovery_email'], $otp)) {
+
                                 $_SESSION['reset_otp_id'] = $otp_id;
-                                $_SESSION['reset_user_id'] = (int) $user['user_id'];
-                                $_SESSION['reset_otp_expires'] = time() + 600;
+                                $_SESSION['reset_user_id'] =
+                                    (int) $user['user_id'];
+                                $_SESSION['reset_otp_expires'] =
+                                    time() + 600;
 
                                 header('Location: verify_otp.php');
-                                exit;
+                                exit();
+
                             } else {
-                                // Invalidate the OTP if email delivery fails.
+
+                                // Invalidate the OTP if sending fails.
                                 $stmt = $conn->prepare(
                                     "UPDATE password_reset_otps
                                      SET used_at = NOW()
@@ -115,9 +138,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Forgot Password | QR PHARMACIES</title>
 
     <style>
@@ -210,45 +235,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
-    <div class="container">
-        <h1>QR PHARMACIES</h1>
 
-        <p>
-            Enter your username and the shared recovery email address.
-            We'll send a verification code that expires in 10 minutes.
-        </p>
+<div class="container">
 
-        <?php if ($error !== ''): ?>
-            <div class="message error">
-                <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
-            </div>
-        <?php endif; ?>
+    <h1>QR PHARMACIES</h1>
 
-        <form method="POST" action="">
-            <label for="username">Username</label>
-            <input
-                type="text"
-                id="username"
-                name="username"
-                required
-                autocomplete="username"
-                value="<?= htmlspecialchars($_POST['username'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-            >
+    <p>
+        Enter your username and the recovery email registered
+        to your account. We will send you a verification code
+        that expires in 10 minutes.
+    </p>
 
-            <label for="recovery_email">Recovery Email</label>
-            <input
-                type="email"
-                id="recovery_email"
-                name="recovery_email"
-                required
-                autocomplete="email"
-                value="<?= htmlspecialchars($_POST['recovery_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-            >
+    <?php if ($error !== ''): ?>
+        <div class="message error">
+            <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
+        </div>
+    <?php endif; ?>
 
-            <button type="submit">Send Verification Code</button>
-        </form>
+    <form method="POST" action="">
 
-        <a class="back" href="login.php">Back to Login</a>
-    </div>
+        <label for="username">Username</label>
+        <input
+            type="text"
+            id="username"
+            name="username"
+            required
+            autocomplete="username"
+            value="<?= htmlspecialchars(
+                $_POST['username'] ?? '',
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>"
+        >
+
+        <label for="recovery_email">Recovery Email</label>
+        <input
+            type="email"
+            id="recovery_email"
+            name="recovery_email"
+            required
+            autocomplete="email"
+            value="<?= htmlspecialchars(
+                $_POST['recovery_email'] ?? '',
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>"
+        >
+
+        <button type="submit">Send Verification Code</button>
+
+    </form>
+
+    <a class="back" href="login.php">Back to Login</a>
+
+</div>
+
 </body>
 </html>
+
