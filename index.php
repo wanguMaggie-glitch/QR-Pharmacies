@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 
@@ -10,62 +9,71 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once 'db_connect.php';
 
-// Identify the logged-in user's role
+// Identify logged-in user's role
 $userRole = strtolower($_SESSION['role'] ?? '');
 $isManager = ($userRole === 'manager');
 
-// Count all medicines
-$medicineQuery = "SELECT COUNT(*) AS total FROM product";
-$medicineResult = $conn->query($medicineQuery);
-
+// Count total medicines
+$medicineResult = $conn->query(
+    "SELECT COUNT(*) AS total FROM product"
+);
 $totalMedicines = $medicineResult
     ? $medicineResult->fetch_assoc()['total']
     : 0;
 
-// Count all categories
-$categoryQuery = "SELECT COUNT(*) AS total FROM category";
-$categoryResult = $conn->query($categoryQuery);
-
+// Count categories
+$categoryResult = $conn->query(
+    "SELECT COUNT(*) AS total FROM category"
+);
 $totalCategories = $categoryResult
     ? $categoryResult->fetch_assoc()['total']
     : 0;
 
-// Count medicines that need restocking
-$lowStockQuery = "
+// Count low-stock medicines
+$lowStockResult = $conn->query("
     SELECT COUNT(*) AS total
     FROM product
     WHERE quantity <= reorder_level
-";
-
-$lowStockResult = $conn->query($lowStockQuery);
-
+");
 $lowStock = $lowStockResult
     ? $lowStockResult->fetch_assoc()['total']
     : 0;
 
 // Count expired medicines
-$expiredQuery = "
+$expiredResult = $conn->query("
     SELECT COUNT(*) AS total
     FROM product
     WHERE expiry_date IS NOT NULL
     AND expiry_date < CURDATE()
-";
-
-$expiredResult = $conn->query($expiredQuery);
-
+");
 $expiredMedicines = $expiredResult
     ? $expiredResult->fetch_assoc()['total']
     : 0;
+
+// User details
+$fullName = htmlspecialchars($_SESSION['full_name'] ?? 'User');
+$displayRole = htmlspecialchars($_SESSION['role'] ?? 'User');
+
+// Greeting based on time
+$hour = (int) date('H');
+
+if ($hour < 12) {
+    $greeting = "Good morning";
+} elseif ($hour < 17) {
+    $greeting = "Good afternoon";
+} else {
+    $greeting = "Good evening";
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | QR PHARMACIES</title>
 
-    <title>QR PHARMACIES | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         * {
@@ -75,290 +83,350 @@ $expiredMedicines = $expiredResult
         }
 
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f3f7f4;
-            color: #26352c;
+            font-family: 'Montserrat', sans-serif;
+            background: #e8f0eb;
+            color: #183b2b;
+        }
+
+        .layout {
+            display: flex;
             min-height: 100vh;
         }
 
-        /* Dashboard heading */
-        .header {
-            background: linear-gradient(135deg, #176b45, #104d32);
-            color: white;
-            padding: 30px 7%;
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: #103d2b;
+            color: #e8f2eb;
+            padding: 30px 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 25px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-        }
-
-        .header-text {
-            flex: 1;
-            text-align: left;
-        }
-
-        .header h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
-            letter-spacing: 1px;
-        }
-
-        .header p {
-            font-size: 16px;
-            color: #e0f2e8;
-        }
-
-        /* Pharmacist picture */
-        .header-image {
-            width: 150px;
-            height: 110px;
-            object-fit: cover;
-            border-radius: 12px;
-            border: 3px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            flex-direction: column;
             flex-shrink: 0;
         }
 
-        /* User information */
-        .user-bar {
-            background-color: white;
-            padding: 15px 7%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-            border-bottom: 1px solid #e0e8e2;
-        }
-
-        .user-bar p {
-            font-size: 14px;
-            color: #46574b;
-        }
-
-        .role {
-            background-color: #e1f3e8;
-            color: #176b45;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-weight: bold;
-            text-transform: capitalize;
-        }
-
-        /* Main dashboard content */
-        .container {
-            width: 86%;
-            max-width: 1200px;
-            margin: 35px auto;
-        }
-
-        .welcome {
-            margin-bottom: 25px;
-        }
-
-        .welcome h2 {
-            color: #176b45;
-            font-size: 26px;
+        .brand {
+            font-size: 23px;
+            font-weight: 800;
+            letter-spacing: 1px;
             margin-bottom: 8px;
         }
 
-        .welcome p {
-            color: #69776d;
+        .brand-subtitle {
+            color: #a8c8b3;
+            font-size: 11px;
             line-height: 1.6;
+            margin-bottom: 40px;
         }
 
-        /* Statistics cards */
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 20px;
-            margin-bottom: 35px;
+        .menu-title {
+            color: #9dbba7;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 0 0 15px 10px;
         }
 
-        .card {
-            background-color: white;
-            padding: 25px 20px;
-            border-radius: 12px;
-            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
-            border-left: 5px solid #176b45;
-            transition: transform 0.2s, box-shadow 0.2s;
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
         }
 
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 7px 18px rgba(0, 0, 0, 0.1);
+        .nav-links a {
+            text-decoration: none;
+            color: #d6e6db;
+            padding: 13px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: 0.3s;
         }
 
-        .card h3 {
-            font-size: 15px;
-            color: #68766c;
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: #286447;
+            color: #ffffff;
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            padding-top: 30px;
+        }
+
+        .user-info {
+            border-top: 1px solid #35634a;
+            padding-top: 20px;
             margin-bottom: 15px;
         }
 
-        .number {
-            font-size: 34px;
-            font-weight: bold;
-            color: #176b45;
+        .user-name {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 5px;
         }
 
-        .card:nth-child(2) {
-            border-left-color: #2980b9;
+        .user-role {
+            color: #a8c8b3;
+            font-size: 11px;
+            text-transform: capitalize;
         }
 
-        .card:nth-child(2) .number {
-            color: #2980b9;
-        }
-
-        .card:nth-child(3) {
-            border-left-color: #e39a23;
-        }
-
-        .card:nth-child(3) .number {
-            color: #d88a12;
-        }
-
-        .card:nth-child(4) {
-            border-left-color: #d9534f;
-        }
-
-        .card:nth-child(4) .number {
-            color: #d9534f;
-        }
-
-        /* Navigation links */
-        .navigation {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .navigation a {
+        .logout {
             display: block;
-            text-align: center;
             text-decoration: none;
-            background-color: white;
-            color: #176b45;
-            padding: 18px 12px;
-            border: 1px solid #dce9df;
-            border-radius: 9px;
-            font-weight: bold;
-            transition: background-color 0.2s, color 0.2s;
+            color: #f1c9bd;
+            font-size: 13px;
+            padding: 12px;
+            border-radius: 8px;
+            transition: 0.3s;
         }
 
-        .navigation a:hover {
-            background-color: #176b45;
-            color: white;
+        .logout:hover {
+            background: #583b35;
+            color: #ffffff;
         }
 
-        .navigation a:last-child {
-            color: #c0392b;
-            border-color: #f0d7d5;
+        /* Main content */
+        .main-content {
+            flex: 1;
+            padding: 35px;
+            min-width: 0;
         }
 
-        .navigation a:last-child:hover {
-            background-color: #c0392b;
-            color: white;
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            gap: 15px;
         }
 
-        /* Manager link */
-        .navigation .manager-link {
-            background-color: #e1f3e8;
-            border-color: #b5dfc5;
+        .page-heading h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #153d2b;
         }
 
-        .navigation .manager-link:hover {
-            background-color: #176b45;
-            color: white;
+        .page-heading p {
+            color: #71877a;
+            font-size: 12px;
+            margin-top: 7px;
+        }
+
+        .date {
+            color: #496957;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Welcome section */
+        .welcome-section {
+            background: linear-gradient(120deg, #164c34, #28714d);
+            color: #ffffff;
+            padding: 32px;
+            border-radius: 14px;
+            margin-bottom: 30px;
+            animation: fadeIn 0.7s ease;
+        }
+
+        .welcome-section h1 {
+            font-size: 25px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .welcome-section p {
+            color: #d2e7d9;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        /* Section headings */
+        .section-heading {
+            font-size: 17px;
+            font-weight: 700;
+            color: #194a32;
+            margin-bottom: 18px;
+        }
+
+        /* Statistics */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: #d4e5d9;
+            padding: 23px;
+            border-radius: 12px;
+            border: 1px solid #c3d9ca;
+            transition: 0.3s;
+            animation: fadeIn 0.8s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            background: #c9dfd0;
+        }
+
+        .stat-card p {
+            color: #547361;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 13px;
+        }
+
+        .stat-card h2 {
+            font-size: 29px;
+            font-weight: 800;
+            color: #174b32;
+        }
+
+        .stat-card small {
+            display: block;
+            color: #71877a;
+            font-size: 11px;
+            margin-top: 8px;
         }
 
         /* Stock reminder */
-        .notice {
-            padding: 20px;
-            background-color: #e4f4e9;
-            border-left: 5px solid #176b45;
-            border-radius: 8px;
+        .reminder {
+            background: #dce8d5;
+            border-left: 5px solid #c49a43;
+            padding: 20px 23px;
+            border-radius: 10px;
+            margin-bottom: 32px;
+        }
+
+        .reminder h3 {
+            font-size: 14px;
+            color: #315b3e;
+            margin-bottom: 8px;
+        }
+
+        .reminder p {
+            font-size: 12px;
             line-height: 1.7;
-            margin-bottom: 30px;
+            color: #607766;
         }
 
-        .notice strong {
-            color: #104d32;
+        /* Quick access */
+        .quick-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 17px;
         }
 
-        .notice.warning {
-            background-color: #fff3d6;
-            border-left-color: #e39a23;
+        .quick-card {
+            display: block;
+            text-decoration: none;
+            background: #d4e5d9;
+            border: 1px solid #c3d9ca;
+            padding: 23px;
+            border-radius: 12px;
+            transition: 0.3s;
         }
 
-        .notice.warning strong {
-            color: #9a6208;
+        .quick-card:hover {
+            transform: translateY(-4px);
+            background: #c4ddcd;
+            border-color: #8eb79b;
+        }
+
+        .quick-card h3 {
+            color: #194b32;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 9px;
+        }
+
+        .quick-card p {
+            color: #607766;
+            font-size: 11px;
+            line-height: 1.6;
         }
 
         /* Footer */
-        footer {
+        .footer {
             text-align: center;
-            padding: 25px 15px;
-            background-color: #104d32;
-            color: #e0f2e8;
-            font-size: 14px;
+            color: #71877a;
+            font-size: 11px;
             margin-top: 40px;
+            padding: 20px 0;
+            border-top: 1px solid #cbdacf;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Responsive layout */
-        @media (max-width: 900px) {
-            .cards {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+        @media (max-width: 1050px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
 
-            .navigation {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .container {
-                width: 90%;
+            .quick-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
-        @media (max-width: 600px) {
-            .header {
-                padding: 22px 5%;
-                gap: 12px;
+        @media (max-width: 750px) {
+            .layout {
+                flex-direction: column;
             }
 
-            .header h1 {
-                font-size: 22px;
+            .sidebar {
+                width: 100%;
+                padding: 22px;
             }
 
-            .header p {
-                font-size: 13px;
+            .brand-subtitle {
+                margin-bottom: 25px;
             }
 
-            .header-image {
-                width: 90px;
-                height: 80px;
+            .nav-links {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
             }
 
-            .user-bar {
-                padding: 15px 5%;
-                flex-wrap: wrap;
+            .sidebar-bottom {
+                margin-top: 20px;
             }
 
-            .cards {
+            .main-content {
+                padding: 22px;
+            }
+
+            .top-bar {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid,
+            .quick-grid {
                 grid-template-columns: 1fr;
             }
 
-            .navigation {
-                grid-template-columns: 1fr;
+            .welcome-section {
+                padding: 24px;
             }
 
-            .container {
-                width: 90%;
-                margin: 25px auto;
-            }
-
-            .welcome h2 {
-                font-size: 23px;
+            .welcome-section h1 {
+                font-size: 21px;
             }
         }
     </style>
@@ -366,135 +434,185 @@ $expiredMedicines = $expiredResult
 
 <body>
 
-    <!-- Dashboard heading and pharmacist picture -->
-    <header class="header">
+<div class="layout">
 
-        <div class="header-text">
-            <h1>QR PHARMACIES</h1>
-            <p>Pharmacy Stock Management System</p>
-        </div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
 
-        <img
-            src="pharmacist.jpg"
-            alt="Pharmacist in a pharmacy"
-            class="header-image"
-            onerror="this.style.display='none';"
-        >
+        <div class="brand">QR PHARMACIES</div>
+        <div class="brand-subtitle">Pharmacy Stock Management System</div>
 
-    </header>
+        <div class="menu-title">Main Menu</div>
 
-    <!-- Logged-in user details -->
-    <div class="user-bar">
+        <nav class="nav-links">
 
-        <p>
-            Welcome,
-            <strong>
-                <?= htmlspecialchars($_SESSION['full_name'] ?? 'User') ?>!
-            </strong>
-        </p>
+            <a href="index.php" class="active">Dashboard</a>
 
-        <p>
-            Your role:
-            <span class="role">
-                <?= htmlspecialchars($_SESSION['role'] ?? 'User') ?>
-            </span>
-        </p>
+            <a href="medicine.php">Medicines</a>
 
-    </div>
+            <a href="categories.php">Categories</a>
 
-    <!-- Main dashboard -->
-    <main class="container">
-
-        <section class="welcome">
-            <h2>Dashboard</h2>
-
-            <p>
-                Welcome to QR PHARMACIES. Here is an overview
-                of your pharmacy stock.
-            </p>
-        </section>
-
-        <!-- Dashboard statistics -->
-        <section class="cards">
-
-            <div class="card">
-                <h3>Total Medicines</h3>
-                <p class="number">
-                    <?= (int) $totalMedicines ?>
-                </p>
-            </div>
-
-            <div class="card">
-                <h3>Medicine Categories</h3>
-                <p class="number">
-                    <?= (int) $totalCategories ?>
-                </p>
-            </div>
-
-            <div class="card">
-                <h3>Low-Stock Medicines</h3>
-                <p class="number">
-                    <?= (int) $lowStock ?>
-                </p>
-            </div>
-
-            <div class="card">
-                <h3>Expired Medicines</h3>
-                <p class="number">
-                    <?= (int) $expiredMedicines ?>
-                </p>
-            </div>
-
-        </section>
-
-        <!-- Dashboard navigation -->
-        <nav class="navigation">
-
-            <a href="medicine.php">View Medicines</a>
-
-            <a href="categories.php">Manage Categories</a>
-
-            <a href="suppliers.php">Manage Suppliers</a>
+            <a href="suppliers.php">Suppliers</a>
 
             <a href="stock_transaction.php">Stock Transactions</a>
 
-            <a href="ocr.php">OCR - Scan Medicine</a>
+            <a href="transaction_history.php">Transaction History</a>
+
+            <a href="alerts.php">Stock Alerts</a>
+
+            <a href="stock_audit.php">Stock Audit</a>
+
+            <a href="ocr.php">Scan Medicine</a>
 
             <?php if ($isManager): ?>
-                <a href="users.php" class="manager-link">
-                    Manage Users
-                </a>
+                <a href="users.php">Manage Users</a>
             <?php endif; ?>
-
-            <a href="logout.php">Log Out</a>
 
         </nav>
 
-        <!-- Stock reminder -->
-        <div class="notice <?= $lowStock > 0 ? 'warning' : '' ?>">
+        <div class="sidebar-bottom">
 
-            <strong>Stock Reminder:</strong>
+            <div class="user-info">
+                <div class="user-name"><?php echo $fullName; ?></div>
+                <div class="user-role"><?php echo $displayRole; ?></div>
+            </div>
 
-            <?php
-            if ($lowStock > 0) {
-                echo "You have " . (int) $lowStock .
-                    " medicine(s) that need restocking.";
-            } else {
-                echo "No medicines currently require restocking.";
-            }
-            ?>
+            <a href="logout.php" class="logout">Log Out</a>
 
         </div>
 
+    </aside>
+
+
+    <!-- Main dashboard -->
+    <main class="main-content">
+
+        <div class="top-bar">
+
+            <div class="page-heading">
+                <h2>Dashboard</h2>
+                <p>Overview of your pharmacy stock and activities.</p>
+            </div>
+
+            <div class="date">
+                <?php echo date('l, d F Y'); ?>
+            </div>
+
+        </div>
+
+
+        <!-- Welcome section -->
+        <section class="welcome-section">
+
+            <h1>
+                <?php echo $greeting; ?>, <?php echo $fullName; ?>!
+            </h1>
+
+            <p>
+                Welcome to QR PHARMACIES. Manage your medicines,
+                monitor stock levels and keep track of pharmacy activities
+                from one place.
+            </p>
+
+        </section>
+
+
+        <!-- Statistics -->
+        <h3 class="section-heading">Stock Overview</h3>
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+                <p>Total Medicines</p>
+                <h2><?php echo $totalMedicines; ?></h2>
+                <small>Medicines registered in the system</small>
+            </div>
+
+            <div class="stat-card">
+                <p>Medicine Categories</p>
+                <h2><?php echo $totalCategories; ?></h2>
+                <small>Categories available</small>
+            </div>
+
+            <div class="stat-card">
+                <p>Low-Stock Medicines</p>
+                <h2><?php echo $lowStock; ?></h2>
+                <small>Medicines requiring restocking</small>
+            </div>
+
+            <div class="stat-card">
+                <p>Expired Medicines</p>
+                <h2><?php echo $expiredMedicines; ?></h2>
+                <small>Medicines past their expiry date</small>
+            </div>
+
+        </div>
+
+
+        <!-- Stock reminder -->
+        <section class="reminder">
+
+            <h3>Stock Reminder</h3>
+
+            <p>
+                You currently have
+                <strong><?php echo $lowStock; ?></strong>
+                low-stock medicines and
+                <strong><?php echo $expiredMedicines; ?></strong>
+                expired medicines. Check the Stock Alerts page
+                to review items that require attention.
+            </p>
+
+        </section>
+
+
+        <!-- Quick access -->
+        <h3 class="section-heading">Quick Access</h3>
+
+        <div class="quick-grid">
+
+            <a href="medicine.php" class="quick-card">
+                <h3>Manage Medicines</h3>
+                <p>View, add, update and manage medicines in your pharmacy.</p>
+            </a>
+
+            <a href="stock_transaction.php" class="quick-card">
+                <h3>Stock Transactions</h3>
+                <p>Record new stock received and medicines issued.</p>
+            </a>
+
+            <a href="alerts.php" class="quick-card">
+                <h3>Stock Alerts</h3>
+                <p>Check low-stock, expired and soon-to-expire medicines.</p>
+            </a>
+
+            <a href="transaction_history.php" class="quick-card">
+                <h3>Transaction History</h3>
+                <p>Review previous stock activities and transactions.</p>
+            </a>
+
+            <a href="stock_audit.php" class="quick-card">
+                <h3>Stock Audit</h3>
+                <p>Compare recorded stock with the physical stock available.</p>
+            </a>
+
+            <a href="ocr.php" class="quick-card">
+                <h3>Scan Medicine</h3>
+                <p>Use medicine scanning to capture product information.</p>
+            </a>
+
+        </div>
+
+
+        <!-- Footer -->
+        <footer class="footer">
+            &copy; <?php echo date('Y'); ?> QR PHARMACIES.
+            Pharmacy Stock Management System.
+        </footer>
+
     </main>
 
-    <!-- Footer -->
-    <footer>
-        &copy; <?= date("Y") ?>
-        QR PHARMACIES Stock Management System
-    </footer>
+</div>
 
 </body>
 </html>
-
-
